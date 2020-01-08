@@ -1,0 +1,11 @@
+PROJECT: SPARK
+VERSION: 20190423
+MINORVERSION: 20190530
+BED: /pine/scr/n/a/nanam/spark/spark-work/01QC/01preGWASQC/02_AllIndivs/20190503v1/SPARK.30K.array_genotype.20190423_noYMt_QC4
+MAP: /nas/longleaf/home/nanam/pkg/eagle/2.4.1/tables/genetic_map_hg38_withX.txt.gz
+SAMPLEFAIL: rmlist/extra-fail.sample.20190530
+SNPFAIL: rmlist/extra-fail.snp.20190530
+SNPFINAL: rmlist/final.snp.20190530
+MKCTRL: Script/mkpseudo_control.sh
+ASDINFO: /pine/scr/n/a/nanam/spark/spark-work/01QC/01preGWASQC/01_Trios/20190503v1/SPARK.30K.array_genotype.20190423_noYMt_QC4_Perfecttrios_ASDonly.fam
+TWINS: /pine/scr/n/a/nanam/spark/spark-work/01QC/01preGWASQC/01_Trios/20190503v1/remove_sample_list_with_IdenticalTwins.txt

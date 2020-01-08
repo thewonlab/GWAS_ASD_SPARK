@@ -1,0 +1,54 @@
+##!/usr/bin/bash
+##SBATCH -p general
+##SBATCH --ntasks=1
+##SBATCH --mem=50g
+##SBATCH --time=2-00:00:00
+#
+module use $HOME/modulefiles 
+module load metal/2018-08-28
+
+subset="201905/trio_5"
+ourdata="20GWAS/201905/trio_4/plink/SPARK_update_model1QC_EUR_only"
+
+conf="30Meta/$subset/Metal_model1QC_EUR_only.conf"
+
+cat << EOS >  $conf
+# GENOMICCONTROL ON
+SCHEME STDERR
+CUSTOMVARIABLE TotalSampleSize
+
+#VERBOSE ON
+
+# === DESCRIBE AND PROCESS THE FIRST INPUT FILE ===
+TRACKPOSITIONS ON
+CHROMOSOMELABEL CHROM
+POSITIONLABEL POS
+MARKER ID
+ALLELE A1 A2
+EFFECT BETA
+PVALUE P
+STDERR LOG_OR_SE
+LABEL TotalSampleSize as OBS_CT
+PROCESS $ourdata
+
+# === DESCRIBE AND PROCESS THE THIRD INPUT FILE ===
+POSITIONLABEL POS
+CHROMOSOMELABEL CHR
+POSITIONLABEL POS
+MARKER ID
+ALLELE A1 A2
+EFFECT BETA
+PVALUE P
+STDERR SE
+LABEL TotalSampleSize as N
+PROCESS 30Meta/$subset/iPSYCHPGC_HG38_update_model1QC_EUR_only
+
+# === CARRY OUT AN INTERIM ANALYSIS OF THE FIRST TWO FILES ===
+OUTFILE 30Meta/$subset/METAANALYSIS_inputfile_model1QC_EUR_only .tbl
+ANALYZE 
+
+QUIT
+
+EOS
+
+metal $conf > 30Meta/201905/trio_5/AE01_01_METAL.20190801_model1QC_EUR_only.log

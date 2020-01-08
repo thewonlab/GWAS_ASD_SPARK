@@ -1,0 +1,99 @@
+require 'yaml'
+require 'pp'
+
+conf_file = ENV['CONF'].to_s if File.exist?(ENV['CONF'].to_s)
+config = YAML.load(File.open(conf_file).read)
+
+task :Moduleload do
+sh "sh moduleload.sh"
+end
+
+#GENOTYPES="genotypes/#{config['VERSION']}"
+GENOTYPES="genotypes/#{config['VERSION']}/#{config['MINORVERSION']}"
+VCF="#{GENOTYPES}/vcf"
+BCF="#{GENOTYPES}/bcf"
+QC="#{config['PROJECT']}.qc"
+PHASED="phased/#{config['VERSION']}/#{config['MINORVERSION']}"
+IMPUTED="imputed/#{config['VERSION']}/#{config['MINORVERSION']}"
+ASSOCTRIO="association/trio/#{config['VERSION']}/#{config['MINORVERSION']}"
+ASSOCTRIO_IMPUTED="association/trio/imputed_first/#{config['VERSION']}/#{config['MINORVERSION']}"
+PHASEDTRIOTMP="#{PHASED}/trios/tmp"
+PHASEDTRIO="#{PHASED}/trios"
+CONFD="conf"
+
+TRIOS="#{CONFD}/#{config['VERSION']}_#{config['MINORVERSION']}.txt"
+PHENO="#{CONFD}/#{config['VERSION']}_#{config['MINORVERSION']}.pheno"
+SEX="#{CONFD}/#{config['VERSION']}_#{config['MINORVERSION']}.sex"
+FAMILY="#{CONFD}/#{config['VERSION']}_#{config['MINORVERSION']}.family"
+
+directory GENOTYPES
+directory VCF
+directory BCF
+directory PHASED
+directory IMPUTED
+directory PHASEDTRIOTMP
+directory PHASEDTRIO
+directory CONFD
+directory ASSOCTRIO_IMPUTED
+
+desc "test"
+task :test do
+ puts {QC}
+end
+
+namespace :prephasing do
+ desc "01 SNPQC"
+ task :STEP1_SNPQC => GENOTYPES do
+  sh "plink --bfile #{config['BED']} --remove #{config['SAMPLEFAIL']} --exclude #{config['SNPFAIL']} --extract #{config['SNPFINAL']} --make-bed --out #{GENOTYPES}/#{QC}"
+ end
+
+ desc "02 Chunk for Chromosome (Autosome)"
+ task :STEP2_ChunkForAutoChrs do
+  range = 1..22
+  range.each do |chr|
+   sh "plink --bfile #{GENOTYPES}/#{QC} --chr #{chr} --make-bed --out #{GENOTYPES}/chr#{chr}.#{QC}"
+  end
+ end
+
+ desc "03 Converto .bed to .bcf"
+ task :STEP3_bed2BCF => [BCF,VCF] do
+   sh "sbatch --time 3:00:00 --mem 5000 --array=1-22 -J Bed2BCF -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_Bed2BCF_%a.log --wrap=\"Script/convertBedtobcf_woChr.sh #{GENOTYPES} #{QC}\""
+ end
+end
+
+namespace :phasing do
+ desc "Phasing genotyping data"
+ task :Phasing => PHASED do
+   sh "sbatch --time 7-00:00:00 --mem 25gb --array=1-22 -J PhasingbyEagle -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_PhasingbyEagle_%a.log --wrap=\"Script/phasing_by_Eagle_woRef.sh #{GENOTYPES} #{PHASED} #{QC} #{config['MAP']}\""
+ end
+end
+
+namespace :preptrio do
+ desc "01 prepare trio phenotypes"
+ task :STEP1_preppheno => CONFD do
+   sh "cut -d \" \" -f1,2 #{config['ASDINFO']} > #{TRIOS}"
+   sh "cut -d \" \" -f1,2,6 #{config['ASDINFO']} > #{PHENO}"
+   sh "cut -d \" \" -f1,2,5 #{config['ASDINFO']} > #{SEX}"
+   sh "cut -d \" \" -f1,2,3,4 #{config['ASDINFO']} > #{FAMILY}"
+ end
+ desc "02 make pseudo-control"
+ task :STEP2_MKPseudoCtrl => PHASEDTRIOTMP do
+   sh "sbatch --time 3:00:00 --mem 5000 -J MkPseudoCtrl --array=1,2,3,4,6,7 -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_mkPseudoCtrl_%a.log --wrap=\"./Script/mkpseudo_control.sh  #{PHASED} #{config['VERSION']}_#{config['MINORVERSION']} #{config['TWINS']} #{QC}\""
+  #end
+ end
+
+ desc "02_2 pickupParents"
+ task :STEP2_PickupParents => PHASEDTRIOTMP do
+   sh "sbatch --time 3:00:00 --mem 5000 -J MkPseudoCtrl --array=1-22 -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_pickupParents_%a.log --wrap=\"./Script/pickupParents.sh  #{PHASED} #{config['VERSION']}_#{config['MINORVERSION']} #{QC}\""
+ end
+
+ desc "02_3 CombineGenotypes"
+ task :STEP2_CombineGenotypes => PHASEDTRIOTMP do
+   sh "sbatch  --time 11-00:00:00 --mem 25gb --array=1-22 -J CombineGenotypes -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_combineGenotypes_2_%a.log --wrap=\"./Script/CombineGenotypes.sh  #{PHASED} #{config['VERSION']}_#{config['MINORVERSION']} #{QC} #{config['MAP']}\""
+ end
+
+ desc "03 Convert .bed to .bcf "
+ task :STEP3_convert2BCF => PHASEDTRIO do
+   sh "sbatch --time 3:00:00 --mem 5000 -J MkPseudoCtrl_3_2 --array=1-22 -o 99log/#{QC}.#{config['VERSION']}.#{config['MINORVERSION']}_mkPseudoCtrl_3_2_%a.log --wrap=\"Script/convertBedtobcf_woChr_trio.sh #{PHASEDTRIO} #{QC}\""
+ end
+end
