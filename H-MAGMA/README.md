@@ -7,7 +7,8 @@ Please also check papers and github listed below for details
 - Sey et al., 2019 bioRxiv, doi: https://doi.org/10.1101/681353 
 "Connecting gene regulatory relationships to neurobiological mechanisms of brain disorders"
 - github:[H-MAGMA](http://github.com/thewonlab/H-MAGMA)
-- Matoba et al., 2020 [doi:10.3791/60428](https://www.jove.com/video/60428/mapping-alzheimer-s-disease-variants-to-their-target-genes-using)
+- Matoba et al., 2020 *"Mapping Alzheimer's Disease Variants to Their Target Genes Using Computational Analysis of Chromatin Configuration."*  
+ [doi:10.3791/60428](https://www.jove.com/video/60428/mapping-alzheimer-s-disease-variants-to-their-target-genes-using)
 
 
 ### Step1: run MAGMA using H-MAGMA input
